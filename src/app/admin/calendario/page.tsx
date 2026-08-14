@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Clock3,
   MapPin,
+  MoveRight,
   Plus,
   Pencil,
   RotateCcw,
@@ -102,6 +103,11 @@ export default async function CalendarioPage({
     .select("id, full_name")
     .order("full_name");
 
+  const { count: pendingRequestCount } = await supabase
+    .from("ride_passengers")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+
   const selectedRides = ridesByDate.get(selectedDateKey) ?? [];
 
   return (
@@ -128,6 +134,31 @@ export default async function CalendarioPage({
           </span>
         </div>
       </div>
+
+      {(pendingRequestCount ?? 0) > 0 ? (
+        <Link
+          href="/admin/solicitacoes"
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-warn/20 bg-warn-soft px-4 py-3.5 shadow-sm hover:border-warn/35 sm:px-5"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warn text-white shadow-sm">
+              <Users size={17} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-ink">
+                {pendingRequestCount} {pendingRequestCount === 1 ? "solicitação aguarda" : "solicitações aguardam"} sua decisão
+              </span>
+              <span className="block truncate text-xs text-ink-soft">
+                Revise todos os pedidos de vaga em um único lugar.
+              </span>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-warn">
+            Ver pedidos
+            <MoveRight size={15} className="transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+      ) : null}
 
       <div className="space-y-5">
         <details className="group overflow-hidden rounded-3xl border border-white/85 bg-card" open>

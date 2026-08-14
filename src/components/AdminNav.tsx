@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
+  Hand,
   Settings,
   Users,
   Wallet,
@@ -11,6 +12,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/admin/calendario", label: "Caronas", icon: CalendarDays },
+  { href: "/admin/solicitacoes", label: "Solicitações", icon: Hand },
   { href: "/admin/passageiros", label: "Passageiros", icon: Users },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/admin/config", label: "Configurações", icon: Settings },
