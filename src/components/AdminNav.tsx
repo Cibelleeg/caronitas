@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   Hand,
+  FileText,
   Settings,
   Users,
   Wallet,
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/admin/solicitacoes", label: "Solicitações", icon: Hand },
   { href: "/admin/passageiros", label: "Passageiros", icon: Users },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/admin/relatorios", label: "Relatórios", icon: FileText },
   { href: "/admin/config", label: "Configurações", icon: Settings },
 ];
 

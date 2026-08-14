@@ -5,11 +5,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarDays,
   Lock,
   Mail,
   ShieldCheck,
-  UsersRound,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { signIn } from "./actions";
