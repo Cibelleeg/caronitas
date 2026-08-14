@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Sparkles } from "lucide-react";
 import { generateSemesterRides } from "./actions";
 
 export default function GenerateForm({
@@ -18,7 +19,7 @@ export default function GenerateForm({
   return (
     <form action={formAction} className="mt-3 flex flex-wrap items-end gap-2">
       <div>
-        <label className="block text-xs font-medium text-neutral-500">
+        <label className="block text-xs font-medium text-ink-soft">
           Início
         </label>
         <input
@@ -26,11 +27,11 @@ export default function GenerateForm({
           name="start_date"
           required
           defaultValue={defaultStart}
-          className="mt-1 rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+          className="mt-1 rounded-lg border border-line px-2 py-1.5 text-sm text-ink outline-none focus:border-route"
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-neutral-500">
+        <label className="block text-xs font-medium text-ink-soft">
           Fim
         </label>
         <input
@@ -38,18 +39,21 @@ export default function GenerateForm({
           name="end_date"
           required
           defaultValue={defaultEnd}
-          className="mt-1 rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+          className="mt-1 rounded-lg border border-line px-2 py-1.5 text-sm text-ink outline-none focus:border-route"
         />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-60"
       >
+        <Sparkles size={14} />
         {pending ? "Gerando..." : "Gerar caronas do período"}
       </button>
       {message ? (
-        <p className="w-full text-sm text-neutral-600">{message}</p>
+        <p className="w-full rounded-lg bg-go-soft px-3 py-2 text-sm text-go-dark">
+          {message}
+        </p>
       ) : null}
     </form>
   );

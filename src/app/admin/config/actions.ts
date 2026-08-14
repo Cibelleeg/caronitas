@@ -25,8 +25,6 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/admin/config");
 }
 
-const RIDE_PERIOD = "única";
-
 export async function generateSemesterRides(
   _prevState: string | null,
   formData: FormData,
@@ -49,6 +47,15 @@ export async function generateSemesterRides(
 
   let ridesCreated = 0;
   let participantsAdded = 0;
+  const horarioCache = new Map<
+    string,
+    {
+      label: string;
+      time_of_day: string | null;
+      seats_total: number;
+      default_price: number;
+    }
+  >();
 
   for (const pattern of patterns ?? []) {
     const patternStart = new Date(`${pattern.start_date}T00:00:00`);
@@ -56,6 +63,18 @@ export async function generateSemesterRides(
     const effectiveStart = start > patternStart ? start : patternStart;
     const effectiveEnd = end < patternEnd ? end : patternEnd;
     if (effectiveStart > effectiveEnd) continue;
+
+    let horario = horarioCache.get(pattern.horario_id);
+    if (!horario) {
+      const { data: horarioRow } = await supabase
+        .from("horarios")
+        .select("label, time_of_day, seats_total, default_price")
+        .eq("id", pattern.horario_id)
+        .single();
+      if (!horarioRow) continue;
+      horario = horarioRow;
+      horarioCache.set(pattern.horario_id, horario);
+    }
 
     const dates = datesForWeekdayInRange(
       pattern.weekday,
@@ -71,7 +90,7 @@ export async function generateSemesterRides(
         .from("rides")
         .select("id")
         .eq("date", key)
-        .eq("period", RIDE_PERIOD)
+        .eq("horario_id", pattern.horario_id)
         .maybeSingle();
 
       if (existingRide) {
@@ -79,7 +98,19 @@ export async function generateSemesterRides(
       } else {
         const { data: created, error } = await supabase
           .from("rides")
-          .insert({ date: key, period: RIDE_PERIOD })
+          .insert({
+            date: key,
+            horario_id: pattern.horario_id,
+            label: horario.label,
+            origin: horario.label,
+            destination: "Destino não informado",
+            ride_type: horario.label.trim().toLowerCase().startsWith("volta")
+              ? "volta"
+              : "ida",
+            time_of_day: horario.time_of_day,
+            seats_total: horario.seats_total,
+            default_price: horario.default_price,
+          })
           .select("id")
           .single();
         if (error || !created) continue;

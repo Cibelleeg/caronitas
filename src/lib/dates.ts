@@ -31,7 +31,6 @@ export function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day);
 }
 
-/** Grade de semanas (cada uma com 7 dias) cobrindo o mês inteiro do `monthAnchor`. */
 export function monthGrid(monthAnchor: Date): Date[][] {
   const start = startOfWeek(startOfMonth(monthAnchor), { weekStartsOn: 0 });
   const end = endOfWeek(endOfMonth(monthAnchor), { weekStartsOn: 0 });
@@ -45,7 +44,19 @@ export function monthGrid(monthAnchor: Date): Date[][] {
 }
 
 export function monthLabel(monthAnchor: Date): string {
-  const label = format(monthAnchor, "MMMM yyyy");
+  const label = new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(monthAnchor);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function longDateLabel(key: string): string {
+  const label = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(parseDateKey(key));
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
@@ -71,7 +82,6 @@ export function todayKey(): string {
   return dateKey(new Date());
 }
 
-/** Todas as datas com o `weekday` informado (0=domingo) dentro do intervalo, inclusive. */
 export function datesForWeekdayInRange(
   weekday: number,
   startDate: Date,
