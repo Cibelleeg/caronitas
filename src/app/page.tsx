@@ -51,7 +51,7 @@ function weekRangeLabel(start: Date, end: Date) {
 }
 
 export default async function PublicRidesPage({ searchParams }: {
-  searchParams: Promise<{ view?: string; month?: string; date?: string; week?: string; tipo?: string }>;
+  searchParams: Promise<{ view?: string; month?: string; date?: string; week?: string }>;
 }) {
   const params = await searchParams;
   const calendarView = params.view === "calendario";
@@ -97,15 +97,11 @@ export default async function PublicRidesPage({ searchParams }: {
   if (calendarView) {
     displayedRides = selectedDate < today
       ? []
-      : (ridesByDate.get(selectedDate) ?? []).filter(
-          (ride) => !params.tipo || ride.ride_type === params.tipo,
-        );
+      : ridesByDate.get(selectedDate) ?? [];
   } else {
     displayedRides = selectedDate < today
       ? []
-      : (ridesByDate.get(selectedDate) ?? []).filter(
-          (ride) => !params.tipo || ride.ride_type === params.tipo,
-        );
+      : ridesByDate.get(selectedDate) ?? [];
   }
 
   const confirmedCounts = await Promise.all(
@@ -195,7 +191,6 @@ export default async function PublicRidesPage({ searchParams }: {
                 const active = key === selectedDate;
                 const count = ridesByDate.get(key)?.length ?? 0;
                 const nextParams = new URLSearchParams({ week: weekStartKey, date: key });
-                if (params.tipo) nextParams.set("tipo", params.tipo);
                 return (
                   <Link key={key} href={`/?${nextParams.toString()}`} aria-current={active ? "page" : undefined} className={`flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl border px-2 py-2 ${active ? "border-route bg-gradient-to-br from-route to-pop text-white shadow-lg shadow-route/20" : "border-white/85 bg-white/60 text-ink-soft backdrop-blur-xl hover:border-route/25 hover:text-route"}`}>
                     <span className="text-sm font-bold">{day.short}</span>
@@ -205,14 +200,6 @@ export default async function PublicRidesPage({ searchParams }: {
                 );
               })}
             </nav>
-            <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl border border-white/85 bg-white/45 p-1.5 backdrop-blur-xl">
-              {[{ value: "", label: "Ida e volta" }, { value: "ida", label: "Ida" }, { value: "volta", label: "Volta" }].map((type) => {
-                const active = (params.tipo ?? "") === type.value;
-                const nextParams = new URLSearchParams({ week: weekStartKey, date: selectedDate });
-                if (type.value) nextParams.set("tipo", type.value);
-                return <Link key={type.value} href={`/?${nextParams.toString()}`} className={`rounded-xl px-3 py-2 text-center text-xs font-bold ${active ? "bg-white text-route shadow-sm" : "text-ink-soft hover:text-ink"}`}>{type.label}</Link>;
-              })}
-            </div>
           </>
         ) : (
           <section className="rounded-[1.65rem] border border-white/85 bg-white/60 p-4 shadow-[0_8px_32px_rgb(31_41_90/0.11)] backdrop-blur-xl sm:px-5 sm:py-4">
