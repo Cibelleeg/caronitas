@@ -19,6 +19,11 @@ export interface PassengerPaymentState {
   message?: string;
 }
 
+export interface EditPassengerState {
+  status: "idle" | "success" | "error";
+  message?: string;
+}
+
 export async function addPassenger(formData: FormData) {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const phone = normalizePhone(String(formData.get("phone") ?? ""));
@@ -41,6 +46,43 @@ export async function addPassenger(formData: FormData) {
   }
 
   revalidatePath("/admin/passageiros");
+}
+
+export async function updatePassenger(
+  _previousState: EditPassengerState,
+  formData: FormData,
+): Promise<EditPassengerState> {
+  const id = String(formData.get("id") ?? "");
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const phone = normalizePhone(String(formData.get("phone") ?? ""));
+
+  if (!id) return { status: "error", message: "Passageiro não encontrado." };
+  if (fullName.length < 3) {
+    return { status: "error", message: "Informe o nome completo." };
+  }
+  if (phone.length < 10 || phone.length > 11) {
+    return { status: "error", message: "Informe um celular válido com DDD." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("passengers")
+    .update({ full_name: fullName, phone })
+    .eq("id", id);
+
+  if (error?.code === "23505") {
+    return { status: "error", message: "Esse celular já pertence a outro passageiro." };
+  }
+  if (error) return { status: "error", message: error.message };
+
+  revalidatePath("/admin/passageiros");
+  revalidatePath("/admin/calendario");
+  revalidatePath("/admin/caronas");
+  revalidatePath("/admin/financeiro");
+  revalidatePath("/admin/solicitacoes");
+  revalidatePath("/consulta");
+  revalidatePath("/");
+  return { status: "success", message: "Passageiro atualizado." };
 }
 
 export async function deletePassenger(formData: FormData) {

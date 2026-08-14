@@ -9,6 +9,7 @@ import BatchFixedPassengersForm from "./BatchFixedPassengersForm";
 import PendingPaymentForm, {
   type PendingRidePayment,
 } from "./PendingPaymentForm";
+import EditPassengerForm from "./EditPassengerForm";
 
 interface UpcomingRide {
   id: string;
@@ -353,6 +354,7 @@ export default async function PassageirosPage({
                       </span>
                     </>
                   ) : null}
+                  <EditPassengerForm passenger={passenger} />
                   <DeletePassengerButton
                     passengerId={passenger.id}
                     passengerName={passenger.full_name}

@@ -6,12 +6,16 @@ import {
   CalendarClock,
   Receipt,
   Search,
+  Smartphone,
   Wallet,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatBRL } from "@/lib/money";
 import { normalizePhone } from "@/lib/phone";
+import CopyPixButton from "./CopyPixButton";
+
+const PIX_KEY = "12991038664";
 
 interface PassengerRide {
   date: string;
@@ -230,6 +234,30 @@ export default async function ConsultaPage({
                 </div>
               </div>
             </div>
+
+            {openAmount > 0 ? (
+              <section className="overflow-hidden rounded-2xl border border-route/15 bg-card shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-route-soft text-route">
+                      <Smartphone size={19} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-route">
+                        Pagar com PIX
+                      </p>
+                      <p className="mt-1 font-mono text-base font-bold text-ink">
+                        {PIX_KEY}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        Chave celular · valor em aberto {formatBRL(openAmount)}
+                      </p>
+                    </div>
+                  </div>
+                  <CopyPixButton pixKey={PIX_KEY} />
+                </div>
+              </section>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FutureRideGroups rides={futureRides} />
