@@ -1,5 +1,3 @@
--- Caronitas: schema inicial (perfis, configuração, padrões recorrentes,
--- caronas, participação por carona, pagamentos) + RLS.
 
 create extension if not exists "pgcrypto";
 
@@ -8,9 +6,6 @@ create type ride_status as enum ('scheduled', 'cancelled');
 create type participation_status as enum ('confirmed', 'declined', 'no_show');
 create type participation_source as enum ('recurring', 'manual');
 
--- ---------------------------------------------------------------------------
--- Tabelas
--- ---------------------------------------------------------------------------
 
 create table profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -78,9 +73,6 @@ create index ride_passengers_ride_idx on ride_passengers (ride_id);
 create index ride_passengers_passenger_idx on ride_passengers (passenger_id);
 create index payments_passenger_idx on payments (passenger_id);
 
--- ---------------------------------------------------------------------------
--- Funções auxiliares (security definer para evitar recursão de RLS)
--- ---------------------------------------------------------------------------
 
 create or replace function public.is_driver()
 returns boolean
@@ -105,9 +97,6 @@ as $$
   where ride_id = p_ride_id and status = 'confirmed';
 $$;
 
--- Cria automaticamente um perfil (papel padrão: passageiro) quando alguém
--- se cadastra via Supabase Auth. A primeira usuária (motorista) precisa ter
--- seu papel promovido manualmente uma vez — ver README.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -130,9 +119,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ---------------------------------------------------------------------------
--- Row Level Security
--- ---------------------------------------------------------------------------
 
 alter table profiles enable row level security;
 alter table app_settings enable row level security;
@@ -141,39 +127,33 @@ alter table rides enable row level security;
 alter table ride_passengers enable row level security;
 alter table payments enable row level security;
 
--- profiles: cada um vê o próprio perfil; motorista vê e edita todos.
 create policy "profiles_select_own_or_driver" on profiles
   for select using (id = auth.uid() or public.is_driver());
 
 create policy "profiles_driver_write" on profiles
   for all using (public.is_driver()) with check (public.is_driver());
 
--- app_settings: leitura para qualquer usuário autenticado; escrita só motorista.
 create policy "app_settings_select_authenticated" on app_settings
   for select using (auth.uid() is not null);
 
 create policy "app_settings_driver_write" on app_settings
   for all using (public.is_driver()) with check (public.is_driver());
 
--- recurring_patterns: passageiro vê os próprios; motorista vê/edita tudo.
 create policy "recurring_patterns_select_own_or_driver" on recurring_patterns
   for select using (passenger_id = auth.uid() or public.is_driver());
 
 create policy "recurring_patterns_driver_write" on recurring_patterns
   for all using (public.is_driver()) with check (public.is_driver());
 
--- rides: qualquer autenticado vê a agenda; só motorista cria/edita/exclui.
 create policy "rides_select_authenticated" on rides
   for select using (auth.uid() is not null);
 
 create policy "rides_driver_write" on rides
   for all using (public.is_driver()) with check (public.is_driver());
 
--- ride_passengers: cada um vê as próprias participações; motorista vê todas.
 create policy "ride_passengers_select_own_or_driver" on ride_passengers
   for select using (passenger_id = auth.uid() or public.is_driver());
 
--- Passageiro confirma presença numa carona futura (não passada) para si mesmo.
 create policy "ride_passengers_self_insert" on ride_passengers
   for insert with check (
     passenger_id = auth.uid()
@@ -183,7 +163,6 @@ create policy "ride_passengers_self_insert" on ride_passengers
     )
   );
 
--- Passageiro só altera o próprio status, e só enquanto a carona é futura.
 create policy "ride_passengers_self_update" on ride_passengers
   for update using (
     passenger_id = auth.uid()
@@ -197,7 +176,6 @@ create policy "ride_passengers_self_update" on ride_passengers
 create policy "ride_passengers_driver_write" on ride_passengers
   for all using (public.is_driver()) with check (public.is_driver());
 
--- payments: passageiro vê os próprios pagamentos; só motorista registra/edita.
 create policy "payments_select_own_or_driver" on payments
   for select using (passenger_id = auth.uid() or public.is_driver());
 
