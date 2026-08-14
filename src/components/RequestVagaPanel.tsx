@@ -60,8 +60,8 @@ function RideRequestForm({
   const DirectionIcon = isReturn ? ArrowDownLeft : ArrowUpRight;
 
   return (
-    <article className="flex flex-col rounded-[1.65rem] border border-white/85 bg-white/65 p-5 shadow-[0_10px_35px_rgb(31_41_90/0.11)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-[0_16px_45px_rgb(31_41_90/0.15)]">
-      <div className="flex items-center justify-between gap-3">
+    <article className="flex min-w-0 flex-col overflow-hidden rounded-[1.65rem] border border-white/85 bg-white/65 p-4 shadow-[0_10px_35px_rgb(31_41_90/0.11)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-[0_16px_45px_rgb(31_41_90/0.15)] sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white shadow-lg ${
             isReturn
@@ -72,7 +72,7 @@ function RideRequestForm({
           <DirectionIcon size={12} strokeWidth={3} />
           {ride.rideType}
         </span>
-        <span className="font-mono text-xs font-semibold text-ink-soft">
+        <span className="whitespace-nowrap font-mono text-xs font-semibold text-ink-soft">
           {currency.format(ride.price)} / pessoa
         </span>
       </div>
@@ -105,7 +105,7 @@ function RideRequestForm({
             style={{ width: `${occupancy}%` }}
           />
         </div>
-        <div className="mt-2 flex justify-between gap-3 text-[11px]">
+        <div className="mt-2 flex flex-wrap justify-between gap-x-3 gap-y-1 text-[11px]">
           <span className="text-ink-soft">
             {ride.seatsConfirmed} de {ride.seatsTotal} ocupadas
           </span>
@@ -119,8 +119,8 @@ function RideRequestForm({
 
       <div className="my-4 h-px bg-line/80" />
 
-      <details className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-2 marker:hidden">
+      <details className="group min-w-0">
+        <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 marker:hidden">
           {ride.passengerNames.length > 0 ? (
             <span className="flex shrink-0">
               {ride.passengerNames.slice(0, 4).map((name, index) => (
@@ -146,7 +146,7 @@ function RideRequestForm({
         {ride.passengerNames.length > 0 ? (
           <ul className="mt-3 grid gap-1.5 rounded-xl bg-white/60 p-3 text-xs text-ink-soft">
             {ride.passengerNames.map((name, index) => (
-              <li key={`${name}-full-${index}`}>{name}</li>
+              <li key={`${name}-full-${index}`} className="break-words">{name}</li>
             ))}
           </ul>
         ) : null}
@@ -182,7 +182,7 @@ function RideRequestForm({
             </summary>
             <form action={formAction} className="mt-4 space-y-2.5">
               <input type="hidden" name="ride_id" value={ride.id} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
                 <Field icon={User} name="first_name" label="Nome" placeholder="Cibells" />
                 <Field icon={User} name="last_name" label="Sobrenome" placeholder="Godoy" />
               </div>
@@ -194,8 +194,8 @@ function RideRequestForm({
                   className="mt-0.5 h-4 w-4 shrink-0 accent-route"
                 />
                 <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                    <Repeat2 size={13} className={isReturn ? "text-accent" : "text-route"} />
+                  <span className="flex items-start gap-1.5 text-xs font-semibold leading-4 text-ink">
+                    <Repeat2 size={13} className={`mt-0.5 shrink-0 ${isReturn ? "text-accent" : "text-route"}`} />
                     Quero essa carona toda semana
                   </span>
                   <span className="mt-1 block text-[10px] leading-4 text-ink-soft">
@@ -279,7 +279,7 @@ export default function RequestVagaPanel({
     <section>
       <div className="mb-5 text-center">
         <h2 className="font-display text-xl font-bold capitalize text-ink">{title ?? label}</h2>
-        <p className="mt-1 text-xs text-ink-soft">
+        <p className="mx-auto mt-1 max-w-full break-words px-2 text-xs text-ink-soft">
           {rides.length > 0
             ? `${rides.length} ${rides.length === 1 ? "horário disponível" : "horários disponíveis"}`
             : "Nenhum horário nesse dia"}
@@ -287,7 +287,7 @@ export default function RequestVagaPanel({
         </p>
       </div>
       {rides.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           {rides.map((ride) => (
             <RideRequestForm key={ride.id} ride={ride} action={action} />
           ))}
