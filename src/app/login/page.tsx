@@ -32,31 +32,13 @@ export default function LoginPage() {
             <div className="mt-20 max-w-md">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
                 <ShieldCheck size={14} />
-                Área exclusiva da motorista
+                Área exclusiva da motorista (aka eu, cibelle)
               </span>
               <h1 className="mt-6 font-display text-4xl font-bold leading-tight tracking-[-0.04em]">
-                Sua operação de caronas em um só lugar.
+                Sim, uma planilha resolveria, mas isso aqui é mais divertido
               </h1>
               <p className="mt-4 max-w-sm text-sm leading-6 text-white/60">
-                Organize viagens, passageiros e pagamentos com uma visão simples
-                do semestre.
-              </p>
-            </div>
-          </div>
-
-          <div className="relative grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
-              <CalendarDays size={20} className="text-blue-300" />
-              <p className="mt-3 text-sm font-semibold">Agenda organizada</p>
-              <p className="mt-1 text-xs leading-5 text-white/50">
-                Caronas fixas e avulsas
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4">
-              <UsersRound size={20} className="text-orange-300" />
-              <p className="mt-3 text-sm font-semibold">Gestão completa</p>
-              <p className="mt-1 text-xs leading-5 text-white/50">
-                Passageiros e financeiro
+                Nunca deixe sua preguiça de organizar suas caronas atrapalhar, construa um site para isso ;)
               </p>
             </div>
           </div>
@@ -82,10 +64,10 @@ export default function LoginPage() {
                 <ShieldCheck size={21} />
               </span>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-route">
-                Painel da motorista
+                Painel da cici
               </p>
               <h2 className="mt-2 font-display text-3xl font-bold tracking-[-0.04em] text-ink">
-                Boas-vindas de volta
+                Boas-vindas de volta, Cibs
               </h2>
               <p className="mt-2 text-sm leading-6 text-ink-soft">
                 Entre com suas credenciais para gerenciar o Caronitas.

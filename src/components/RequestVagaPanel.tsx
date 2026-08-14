@@ -183,8 +183,8 @@ function RideRequestForm({
             <form action={formAction} className="mt-4 space-y-2.5">
               <input type="hidden" name="ride_id" value={ride.id} />
               <div className="grid grid-cols-2 gap-2">
-                <Field icon={User} name="first_name" label="Nome" placeholder="Maria" />
-                <Field icon={User} name="last_name" label="Sobrenome" placeholder="Silva" />
+                <Field icon={User} name="first_name" label="Nome" placeholder="Cibells" />
+                <Field icon={User} name="last_name" label="Sobrenome" placeholder="Godoy" />
               </div>
               <Field icon={Phone} name="phone" label="Celular com DDD" placeholder="(12) 99999-9999" />
               <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/90 bg-white/55 p-3">
