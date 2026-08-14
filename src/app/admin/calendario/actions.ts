@@ -4,8 +4,14 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { dateKey } from "@/lib/dates";
+import { normalizePhone } from "@/lib/phone";
 
 export interface PublishCustomRideState {
+  status: "idle" | "success" | "error";
+  message?: string;
+}
+
+export interface QuickPassengerState {
   status: "idle" | "success" | "error";
   message?: string;
 }
@@ -134,6 +140,72 @@ export async function addPassengerToRide(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/calendario");
+}
+
+export async function addQuickPassengerToRide(
+  _previousState: QuickPassengerState,
+  formData: FormData,
+): Promise<QuickPassengerState> {
+  const rideId = String(formData.get("ride_id") ?? "");
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const phone = normalizePhone(String(formData.get("phone") ?? ""));
+  const price = Number(formData.get("price"));
+
+  if (!rideId) return { status: "error", message: "Carona não encontrada." };
+  if (fullName.length < 3) {
+    return { status: "error", message: "Informe o nome completo." };
+  }
+  if (phone.length < 10 || phone.length > 11) {
+    return { status: "error", message: "Informe um celular válido com DDD." };
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return { status: "error", message: "Informe um preço válido." };
+  }
+
+  const supabase = await createClient();
+  const { data: existingPassenger } = await supabase
+    .from("passengers")
+    .select("id")
+    .eq("phone", phone)
+    .maybeSingle();
+
+  let passengerId = existingPassenger?.id;
+  if (!passengerId) {
+    const { data: passenger, error: passengerError } = await supabase
+      .from("passengers")
+      .insert({ full_name: fullName, phone })
+      .select("id")
+      .single();
+    if (passengerError || !passenger) {
+      return { status: "error", message: passengerError?.message ?? "Não foi possível cadastrar o passageiro." };
+    }
+    passengerId = passenger.id;
+  }
+
+  const { error } = await supabase.from("ride_passengers").upsert(
+    {
+      ride_id: rideId,
+      passenger_id: passengerId,
+      price,
+      status: "confirmed",
+      source: "manual",
+    },
+    { onConflict: "ride_id,passenger_id" },
+  );
+  if (error) return { status: "error", message: error.message };
+
+  revalidatePath("/admin/calendario");
+  revalidatePath("/admin/caronas");
+  revalidatePath("/admin/passageiros");
+  revalidatePath("/admin/financeiro");
+  revalidatePath("/consulta");
+  revalidatePath("/");
+  return {
+    status: "success",
+    message: existingPassenger
+      ? "Passageiro existente adicionado à carona."
+      : "Passageiro cadastrado e adicionado à carona.",
+  };
 }
 
 export async function updateRideDetails(formData: FormData) {

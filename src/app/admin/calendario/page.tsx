@@ -36,6 +36,7 @@ import {
   updateParticipationStatus,
 } from "./actions";
 import PublishRideForm from "./PublishRideForm";
+import QuickPassengerForm from "./QuickPassengerForm";
 
 interface RideWithPassengers {
   id: string;
@@ -490,7 +491,7 @@ export default async function CalendarioPage({
                   <input type="hidden" name="ride_id" value={ride.id} />
                   <div className="min-w-0">
                     <label className="block text-xs font-medium text-ink-soft">
-                      Adicionar passageiro fixo
+                      Adicionar passageiro cadastrado
                     </label>
                     <select
                       name="passenger_id"
@@ -524,6 +525,7 @@ export default async function CalendarioPage({
                   </button>
                 </form>
               ) : null}
+              <QuickPassengerForm rideId={ride.id} defaultPrice={ride.default_price} />
               </div>
             </div>
           );
