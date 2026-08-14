@@ -31,10 +31,10 @@ export default function AdminNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`group flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors md:w-full ${
+            className={`group flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all md:w-full ${
               isActive
-                ? "bg-route text-white shadow-md shadow-route/15"
-                : "text-ink-soft hover:bg-route-soft hover:text-route"
+                ? "bg-gradient-to-r from-route to-pop text-white shadow-lg shadow-route/20"
+                : "text-ink-soft hover:bg-white/70 hover:text-route hover:shadow-sm"
             }`}
             aria-current={isActive ? "page" : undefined}
           >

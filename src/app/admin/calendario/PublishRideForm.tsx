@@ -36,8 +36,8 @@ export default function PublishRideForm({
   );
 
   return (
-    <details className="group overflow-hidden rounded-2xl border border-route/20 bg-card shadow-sm open:shadow-md">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-gradient-to-r from-route-soft to-white px-4 py-4 marker:hidden sm:px-5">
+    <details className="group overflow-hidden rounded-3xl border border-route/20 bg-card shadow-sm open:shadow-md">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-gradient-to-r from-route-soft to-white px-5 py-5 marker:hidden sm:px-6">
         <span className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-route text-white shadow-sm">
             <CalendarPlus size={18} />
@@ -56,7 +56,7 @@ export default function PublishRideForm({
         </span>
       </summary>
 
-      <form action={formAction} className="space-y-4 border-t border-line p-4 sm:p-5">
+      <form action={formAction} className="space-y-5 border-t border-line p-5 sm:p-6">
         <fieldset>
           <legend className="text-xs font-medium text-ink-soft">
             Tipo de carona
@@ -106,7 +106,7 @@ export default function PublishRideForm({
           </label>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <label>
             <span className="text-xs font-medium text-ink-soft">Horário</span>
             <div className="relative mt-1">

@@ -177,6 +177,72 @@ export async function updateParticipationStatus(formData: FormData) {
   const status = String(formData.get("status"));
 
   const supabase = await createClient();
+  const { data: participation } = await supabase
+    .from("ride_passengers")
+    .select(
+      "passenger_id, source, status, rides(id, date, series_id, ride_type, time_of_day, origin, destination)",
+    )
+    .eq("id", id)
+    .maybeSingle()
+    .returns<{
+      passenger_id: string;
+      source: "recurring" | "manual";
+      status: "pending" | "confirmed" | "declined" | "no_show";
+      rides: {
+        id: string;
+        date: string;
+        series_id: string | null;
+        ride_type: "ida" | "volta";
+        time_of_day: string | null;
+        origin: string;
+        destination: string;
+      } | null;
+    }>();
+
+  if (
+    participation?.source === "recurring" &&
+    participation.status === "pending" &&
+    (status === "confirmed" || status === "declined") &&
+    participation.rides
+  ) {
+    const ride = participation.rides;
+    let ridesQuery = supabase
+      .from("rides")
+      .select("id, date")
+      .gte("date", ride.date)
+      .eq("ride_type", ride.ride_type)
+      .eq("origin", ride.origin)
+      .eq("destination", ride.destination);
+    ridesQuery = ride.series_id
+      ? ridesQuery.eq("series_id", ride.series_id)
+      : ride.time_of_day
+        ? ridesQuery.eq("time_of_day", ride.time_of_day)
+        : ridesQuery.is("time_of_day", null);
+    const { data: sequenceRides } = await ridesQuery;
+    const weekday = new Date(`${ride.date}T12:00:00`).getDay();
+    const sequenceRideIds = (sequenceRides ?? [])
+      .filter(
+        (candidate) =>
+          ride.series_id ||
+          new Date(`${candidate.date}T12:00:00`).getDay() === weekday,
+      )
+      .map((candidate) => candidate.id);
+
+    const { error } = await supabase
+      .from("ride_passengers")
+      .update({ status: status as "confirmed" | "declined" })
+      .eq("passenger_id", participation.passenger_id)
+      .eq("source", "recurring")
+      .eq("status", "pending")
+      .in("ride_id", sequenceRideIds);
+
+    if (error) throw new Error(error.message);
+    revalidatePath("/admin/calendario");
+    revalidatePath("/admin/passageiros");
+    revalidatePath("/consulta");
+    return;
+  }
+
   const { error } = await supabase
     .from("ride_passengers")
     .update({

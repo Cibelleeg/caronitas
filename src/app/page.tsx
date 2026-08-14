@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  ArrowDownLeft,
-  ArrowRight,
-  ArrowUpRight,
-  LogIn,
-  Search,
-} from "lucide-react";
+import { ArrowRight, Filter, LogIn, Search, X } from "lucide-react";
 import Logo from "@/components/Logo";
 import MonthCalendar from "@/components/MonthCalendar";
 import RequestVagaPanel, { type RideSlot } from "@/components/RequestVagaPanel";
@@ -35,25 +29,23 @@ interface PublicRide {
   notes: string | null;
 }
 
-function timeLabel(ride: { label: string; time_of_day: string | null }) {
-  return ride.time_of_day
-    ? `${ride.label} · ${ride.time_of_day.slice(0, 5)}`
-    : ride.label;
-}
-
 export default async function PublicCalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; date?: string }>;
+  searchParams: Promise<{
+    month?: string;
+    date?: string;
+    dia?: string;
+    tipo?: string;
+    horario?: string;
+  }>;
 }) {
   const params = await searchParams;
   const monthAnchor = parseMonthKey(params.month);
-  const selectedDateKey = params.date ?? todayKey();
+  let selectedDateKey = params.date ?? todayKey();
   const monthKeyForLinks = monthKey(monthAnchor);
   const today = todayKey();
-
   const supabase = await createClient();
-
   const weeks = monthGrid(monthAnchor);
   const rangeStart = dateKey(weeks[0][0]);
   const rangeEnd = dateKey(weeks[weeks.length - 1][6]);
@@ -69,21 +61,44 @@ export default async function PublicCalendarPage({
     .order("time_of_day", { ascending: true, nullsFirst: false })
     .returns<PublicRide[]>();
 
+  const availableTimes = Array.from(
+    new Set(
+      (rides ?? []).flatMap((ride) =>
+        ride.time_of_day ? [ride.time_of_day.slice(0, 5)] : [],
+      ),
+    ),
+  ).sort();
+  const filteredRides = (rides ?? []).filter((ride) => {
+    const weekday = new Date(`${ride.date}T12:00:00`).getDay();
+    if (params.dia && weekday !== Number(params.dia)) return false;
+    if (params.tipo && ride.ride_type !== params.tipo) return false;
+    if (
+      params.horario &&
+      ride.time_of_day?.slice(0, 5) !== params.horario
+    ) {
+      return false;
+    }
+    return true;
+  });
   const ridesByDate = new Map<string, PublicRide[]>();
-  (rides ?? []).forEach((r) => {
-    const list = ridesByDate.get(r.date) ?? [];
-    list.push(r);
-    ridesByDate.set(r.date, list);
+  filteredRides.forEach((ride) => {
+    const list = ridesByDate.get(ride.date) ?? [];
+    list.push(ride);
+    ridesByDate.set(ride.date, list);
   });
 
-  const selectedRides = ridesByDate.get(selectedDateKey) ?? [];
-  const isFutureDay = selectedDateKey >= today;
+  const hasActiveFilters = Boolean(params.dia || params.tipo || params.horario);
+  if (hasActiveFilters && !ridesByDate.has(selectedDateKey)) {
+    const firstMatchingRide = filteredRides.find((ride) => ride.date >= today);
+    selectedDateKey = firstMatchingRide?.date ?? filteredRides[0]?.date ?? selectedDateKey;
+  }
 
+  const selectedRides = ridesByDate.get(selectedDateKey) ?? [];
   const confirmedCounts = await Promise.all(
-    selectedRides.map((r) =>
+    selectedRides.map((ride) =>
       supabase
-        .rpc("ride_confirmed_count", { p_ride_id: r.id })
-        .then(({ data }) => [r.id, data ?? 0] as const),
+        .rpc("ride_confirmed_count", { p_ride_id: ride.id })
+        .then(({ data }) => [ride.id, data ?? 0] as const),
     ),
   );
   const confirmedByRide = new Map(confirmedCounts);
@@ -98,167 +113,201 @@ export default async function PublicCalendarPage({
     names.push(passenger.full_name);
     passengerNamesByRide.set(passenger.ride_id, names);
   });
+  const rideSlots = selectedRides.map(
+    (ride): RideSlot => ({
+      id: ride.id,
+      label: ride.label,
+      origin: ride.origin,
+      destination: ride.destination,
+      time: ride.time_of_day ? ride.time_of_day.slice(0, 5) : "",
+      price: ride.default_price,
+      rideType: ride.ride_type,
+      notes: ride.notes,
+      seatsTotal: ride.seats_total,
+      seatsConfirmed: confirmedByRide.get(ride.id) ?? 0,
+      passengerNames: passengerNamesByRide.get(ride.id) ?? [],
+    }),
+  );
+  const dayHref = (date: string) => {
+    const query = new URLSearchParams({ month: monthKeyForLinks, date });
+    if (params.dia) query.set("dia", params.dia);
+    if (params.tipo) query.set("tipo", params.tipo);
+    if (params.horario) query.set("horario", params.horario);
+    return `/?${query.toString()}`;
+  };
 
   return (
-    <div className="min-h-screen flex-1 bg-[#f5f7fb]">
-      <header className="border-b border-stone-200 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-16 w-full max-w-[96rem] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-            <Logo />
-          </div>
-            <div className="flex items-center gap-1 text-xs sm:gap-2 sm:text-sm">
-              <Link
-                href="/consulta"
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-ink-soft hover:bg-white hover:text-ink hover:shadow-sm"
-              >
-                <Search size={15} />
-                <span className="hidden sm:inline">Consultar saldo</span>
-                <span className="sm:hidden">Saldo</span>
-              </Link>
-              <Link
-                href="/login"
-                className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-ink-soft shadow-sm hover:border-stone-300 hover:text-ink"
-              >
-                <LogIn size={15} />
-                Motorista
-              </Link>
-            </div>
-        </div>
-      </header>
+    <div className="relative min-h-screen flex-1 overflow-hidden bg-[linear-gradient(155deg,#eef1ff_0%,#f6efff_48%,#fff2e9_100%)]">
+      <div className="pointer-events-none absolute -left-24 -top-28 h-80 w-80 rounded-full bg-route/20 blur-[95px]" />
+      <div className="pointer-events-none absolute -right-28 top-12 h-96 w-96 rounded-full bg-accent/20 blur-[105px]" />
+      <div className="pointer-events-none absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-pop/15 blur-[105px]" />
 
-      <main className="mx-auto w-full max-w-[96rem] px-5 py-5 pb-10 sm:px-6 lg:px-8 lg:py-6">
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(19rem,0.7fr)_minmax(34rem,1.3fr)] lg:gap-6">
-          <section className="flex w-full flex-col rounded-[1.75rem] border border-line/70 bg-white p-3 shadow-[0_12px_40px_rgb(15_23_42/0.07)] sm:p-4 lg:sticky lg:top-6 lg:h-[46rem]">
-            <div className="mb-3 flex items-end justify-between px-1 pb-1">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-route">
-                  Agenda de caronas
-                </p>
-                <h2 className="mt-1 text-base font-semibold text-ink">
-                  Escolha uma data
-                </h2>
-              </div>
-              <span className="hidden items-center gap-1.5 text-xs text-ink-faint sm:flex">
-                <span className="h-2 w-2 rounded-full bg-accent" /> Hoje
-              </span>
-            </div>
-            <div className="min-h-0 flex-1">
-              <MonthCalendar
-                monthAnchor={monthAnchor}
-                baseHref="/"
-                fixedHeight
-                renderDay={(day, key, inMonth) => {
-                const dayRides = ridesByDate.get(key) ?? [];
-                const isSelected = key === selectedDateKey;
-
-                return (
-                  <Link
-                    href={`/?month=${monthKeyForLinks}&date=${key}`}
-                    className={`flex h-full flex-col gap-1 rounded-xl p-1.5 text-xs transition-colors sm:p-2 ${
-                      isSelected
-                        ? "bg-route text-white shadow-md shadow-route/20"
-                        : "hover:bg-route-soft hover:text-route"
-                    } ${inMonth ? "" : "opacity-35"}`}
-                  >
-                    <span className={`font-semibold ${isSelected ? "text-white" : "text-ink"}`}>
-                      {day.getDate()}
-                    </span>
-                    {dayRides.length > 0 ? (
-                      <span className="mt-auto flex flex-wrap gap-1">
-                        {dayRides.slice(0, 2).map((ride) => (
-                          <span
-                            key={ride.id}
-                            className={`flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[8px] font-bold uppercase sm:text-[9px] ${
-                              isSelected
-                                ? "bg-white/20 text-white"
-                                : ride.ride_type === "volta"
-                                  ? "bg-accent-soft text-accent-dark"
-                                  : "bg-route-soft text-route"
-                            }`}
-                          >
-                            {ride.ride_type === "volta" ? (
-                              <ArrowDownLeft size={9} />
-                            ) : (
-                              <ArrowUpRight size={9} />
-                            )}
-                            <span className="hidden sm:inline">
-                              {ride.ride_type}
-                            </span>
-                          </span>
-                        ))}
-                        {dayRides.length > 2 ? (
-                          <span className="text-[9px] font-bold">+{dayRides.length - 2}</span>
-                        ) : null}
-                      </span>
-                    ) : null}
-                  </Link>
-                );
-                }}
-              />
-            </div>
-          </section>
-
-          <aside className="w-full rounded-[1.75rem] border border-line/80 bg-white p-4 shadow-[0_12px_40px_rgb(15_23_42/0.07)] sm:p-5 lg:min-h-[46rem]">
-            {isFutureDay ? (
-              <RequestVagaPanel
-                dateKey={selectedDateKey}
-                rides={selectedRides.map(
-                  (ride): RideSlot => ({
-                    id: ride.id,
-                    label: ride.label,
-                    origin: ride.origin,
-                    destination: ride.destination,
-                    time: ride.time_of_day ? ride.time_of_day.slice(0, 5) : "",
-                    price: ride.default_price,
-                    rideType: ride.ride_type,
-                    notes: ride.notes,
-                    seatsTotal: ride.seats_total,
-                    seatsConfirmed: confirmedByRide.get(ride.id) ?? 0,
-                    passengerNames: passengerNamesByRide.get(ride.id) ?? [],
-                  }),
-                )}
-                action={requestSeatPublic}
-              />
-            ) : (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-route">Data selecionada</p>
-                <h2 className="mt-1 font-display text-lg font-bold text-ink">
-                  {longDateLabel(selectedDateKey)}
-                </h2>
-                {selectedRides.length === 0 ? (
-                  <div className="mt-4 rounded-2xl border border-dashed border-line bg-paper px-5 py-8 text-center">
-                    <p className="text-sm font-medium text-ink">Nenhuma carona nesse dia</p>
-                    <p className="mt-1 text-xs text-ink-soft">Escolha outra data no calendário.</p>
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {selectedRides.map((ride) => (
-                      <div key={ride.id} className="rounded-2xl border border-line bg-card p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-sm font-semibold text-ink">{timeLabel(ride)}</h3>
-                          <span className="font-mono text-sm font-semibold text-route">{formatBRL(ride.default_price)}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-ink-soft">
-                          {confirmedByRide.get(ride.id) ?? 0}/{ride.seats_total} vagas ocupadas
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </aside>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-ink-faint">
-          Precisa conferir um pedido ou pagamento?
+      <main className="relative z-10 mx-auto w-full max-w-[45rem] px-4 py-5 pb-10 sm:py-6">
+        <header className="mb-5 flex items-center justify-between gap-2 rounded-full border border-white/85 bg-white/60 p-2 pl-3 shadow-[0_8px_32px_rgb(31_41_90/0.11)] backdrop-blur-xl sm:gap-3 sm:pl-4">
+          <Logo />
+          <nav className="flex shrink-0 items-center gap-1 text-xs">
             <Link
               href="/consulta"
-              className="flex items-center gap-1 font-semibold text-route hover:text-route-dark"
+              aria-label="Consultar saldo"
+              title="Consultar saldo"
+              className="flex min-h-9 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-medium text-ink-soft hover:bg-white/70 hover:text-ink max-[430px]:w-9 max-[430px]:px-0"
             >
-              Consultar agora <ArrowRight size={13} />
+              <Search size={15} />
+              <span className="max-[430px]:sr-only">Saldo</span>
             </Link>
+            <Link
+              href="/login"
+              aria-label="Acessar área da motorista"
+              title="Área da motorista"
+              className="flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-ink px-3.5 py-2 font-semibold text-white shadow-sm hover:bg-ink/90 max-[430px]:w-9 max-[430px]:px-0"
+            >
+              <LogIn size={15} />
+              <span className="max-[430px]:sr-only">Motorista</span>
+            </Link>
+          </nav>
+        </header>
+
+        <form
+          method="get"
+          className="mb-4 rounded-[1.4rem] border border-white/85 bg-white/55 p-3 shadow-[0_8px_28px_rgb(31_41_90/0.08)] backdrop-blur-xl"
+        >
+          <input type="hidden" name="month" value={monthKeyForLinks} />
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <Filter size={14} className="text-route" />
+            <span className="text-xs font-semibold text-ink">Encontrar carona</span>
+            {hasActiveFilters ? (
+              <Link
+                href={`/?month=${monthKeyForLinks}`}
+                className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-ink-soft hover:text-route"
+              >
+                <X size={12} /> Limpar
+              </Link>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+            <select
+              name="dia"
+              defaultValue={params.dia ?? ""}
+              aria-label="Dia da semana"
+              className="rounded-xl border border-white/90 bg-white/70 px-3 py-2 text-xs text-ink outline-none focus:border-route"
+            >
+              <option value="">Todos os dias</option>
+              <option value="1">Segunda-feira</option>
+              <option value="2">Terça-feira</option>
+              <option value="3">Quarta-feira</option>
+              <option value="4">Quinta-feira</option>
+              <option value="5">Sexta-feira</option>
+              <option value="6">Sábado</option>
+              <option value="0">Domingo</option>
+            </select>
+            <select
+              name="tipo"
+              defaultValue={params.tipo ?? ""}
+              aria-label="Tipo de carona"
+              className="rounded-xl border border-white/90 bg-white/70 px-3 py-2 text-xs text-ink outline-none focus:border-route"
+            >
+              <option value="">Ida e volta</option>
+              <option value="ida">Somente ida</option>
+              <option value="volta">Somente volta</option>
+            </select>
+            <select
+              name="horario"
+              defaultValue={params.horario ?? ""}
+              aria-label="Horário da carona"
+              className="rounded-xl border border-white/90 bg-white/70 px-3 py-2 text-xs text-ink outline-none focus:border-route"
+            >
+              <option value="">Todos os horários</option>
+              {availableTimes.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+            <button className="col-span-2 rounded-xl bg-gradient-to-r from-route to-pop px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-route/15 sm:col-span-1">
+              Filtrar
+            </button>
+          </div>
+        </form>
+
+        <section className="rounded-[1.65rem] border border-white/85 bg-white/60 p-4 shadow-[0_8px_32px_rgb(31_41_90/0.11)] backdrop-blur-xl sm:px-5 sm:py-4">
+          <MonthCalendar
+            monthAnchor={monthAnchor}
+            baseHref="/"
+            compact
+            queryParams={{
+              dia: params.dia,
+              tipo: params.tipo,
+              horario: params.horario,
+            }}
+            renderDay={(day, key, inMonth) => {
+              const dayRides = ridesByDate.get(key) ?? [];
+              const isSelected = key === selectedDateKey;
+              const hasIda = dayRides.some((ride) => ride.ride_type === "ida");
+              const hasVolta = dayRides.some((ride) => ride.ride_type === "volta");
+
+              return (
+                <Link
+                  href={dayHref(key)}
+                  className={`flex h-full flex-col items-center justify-center gap-1 rounded-xl text-xs ${
+                    inMonth ? "" : "opacity-30"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-full font-semibold ${
+                      isSelected
+                        ? "bg-gradient-to-br from-route to-pop text-white shadow-[0_6px_16px_rgb(57_73_224/0.32)]"
+                        : "text-ink hover:bg-white/70"
+                    }`}
+                  >
+                    {day.getDate()}
+                  </span>
+                  <span className="flex min-h-1.5 gap-1">
+                    {hasIda ? <span className="h-1.5 w-1.5 rounded-full bg-route" /> : null}
+                    {hasVolta ? <span className="h-1.5 w-1.5 rounded-full bg-accent" /> : null}
+                  </span>
+                </Link>
+              );
+            }}
+          />
+        </section>
+
+        <div className="mt-6">
+          {selectedDateKey >= today ? (
+            <RequestVagaPanel
+              dateKey={selectedDateKey}
+              rides={rideSlots}
+              action={requestSeatPublic}
+            />
+          ) : (
+            <section>
+              <div className="mb-5 text-center">
+                <h1 className="font-display text-xl font-bold text-ink">
+                  {longDateLabel(selectedDateKey)}
+                </h1>
+                <p className="mt-1 text-xs text-ink-soft">Histórico de caronas</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {selectedRides.map((ride) => (
+                  <article key={ride.id} className="rounded-[1.65rem] border border-white/85 bg-white/65 p-5 text-center shadow-lg backdrop-blur-xl">
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${ride.ride_type === "volta" ? "bg-accent-soft text-accent-dark" : "bg-route-soft text-route"}`}>
+                      {ride.ride_type}
+                    </span>
+                    <p className="mt-4 font-display text-4xl font-bold text-ink">{ride.time_of_day?.slice(0, 5) ?? "—"}</p>
+                    <p className="mt-2 text-xs text-ink-soft">{ride.origin} <ArrowRight size={12} className="inline" /> {ride.destination}</p>
+                    <p className="mt-4 font-mono text-xs font-semibold text-ink-soft">{formatBRL(ride.default_price)} / pessoa</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
+
+        <footer className="mt-7 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
+          Precisa conferir um pedido ou pagamento?
+          <Link href="/consulta" className="font-semibold text-route hover:text-route-dark">
+            Consultar
+          </Link>
+        </footer>
       </main>
     </div>
   );

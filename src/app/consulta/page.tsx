@@ -1,10 +1,40 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarCheck, Receipt, Search, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarCheck,
+  CalendarClock,
+  Receipt,
+  Search,
+  Wallet,
+} from "lucide-react";
 import Logo from "@/components/Logo";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPassengerBalances } from "@/lib/balances";
 import { formatBRL } from "@/lib/money";
 import { normalizePhone } from "@/lib/phone";
+
+interface PassengerRide {
+  date: string;
+  status: string;
+  label: string;
+  origin: string;
+  destination: string;
+  time: string | null;
+  rideType: "ida" | "volta";
+  seriesId: string | null;
+  participationId: string;
+  isPaid: boolean;
+}
+
+interface RideGroup {
+  key: string;
+  rideType: "ida" | "volta";
+  origin: string;
+  destination: string;
+  time: string | null;
+  weekday: string;
+  rides: PassengerRide[];
+}
 
 export default async function ConsultaPage({
   searchParams,
@@ -17,15 +47,16 @@ export default async function ConsultaPage({
 
   let notFound = false;
   let fullName: string | null = null;
-  let rideHistory: { date: string; price: number; status: string }[] = [];
+  let futureRides: PassengerRide[] = [];
+  let completedRides: PassengerRide[] = [];
   let paymentHistory: {
     id: string;
     amount: number;
     paid_at: string;
     note: string | null;
+    ride_passenger_id: string | null;
   }[] = [];
-  let balance: Awaited<ReturnType<typeof getPassengerBalances>>[number] | null =
-    null;
+  let openAmount = 0;
 
   if (phone) {
     const supabase = createAdminClient();
@@ -39,27 +70,79 @@ export default async function ConsultaPage({
       notFound = true;
     } else {
       fullName = passenger.full_name;
-      const [balances, { data: rides }, { data: payments }] = await Promise.all([
-        getPassengerBalances(passenger.id),
+      const [{ data: rides }, { data: payments }] = await Promise.all([
         supabase
           .from("ride_passengers")
-          .select("price, status, rides(date)")
+          .select(
+            "id, price, status, rides(date, label, origin, destination, time_of_day, ride_type, series_id)",
+          )
           .eq("passenger_id", passenger.id)
           .returns<
-            { price: number; status: string; rides: { date: string } | null }[]
+            {
+              id: string;
+              price: number;
+              status: string;
+              rides: {
+                date: string;
+                label: string;
+                origin: string;
+                destination: string;
+                time_of_day: string | null;
+                ride_type: "ida" | "volta";
+                series_id: string | null;
+              } | null;
+            }[]
           >(),
         supabase
           .from("payments")
-          .select("id, amount, paid_at, note")
+          .select("id, amount, paid_at, note, ride_passenger_id")
           .eq("passenger_id", passenger.id)
           .order("paid_at", { ascending: false }),
       ]);
 
-      balance = balances[0] ?? null;
-      rideHistory = (rides ?? [])
-        .filter((r) => r.rides)
-        .map((r) => ({ date: r.rides!.date, price: r.price, status: r.status }))
+      const today = new Date().toISOString().slice(0, 10);
+      const paidParticipationIds = new Set(
+        (payments ?? []).flatMap((payment) =>
+          payment.ride_passenger_id ? [payment.ride_passenger_id] : [],
+        ),
+      );
+      const passengerRides = (rides ?? [])
+        .filter((participation) => participation.rides)
+        .map((participation) => ({
+          date: participation.rides!.date,
+          status: participation.status,
+          label: participation.rides!.label,
+          origin: participation.rides!.origin,
+          destination: participation.rides!.destination,
+          time: participation.rides!.time_of_day,
+          rideType: participation.rides!.ride_type,
+          seriesId: participation.rides!.series_id,
+          participationId: participation.id,
+          isPaid: paidParticipationIds.has(participation.id),
+        }));
+      futureRides = passengerRides
+        .filter(
+          (ride) =>
+            ride.date >= today &&
+            ride.status !== "declined" &&
+            ride.status !== "no_show",
+        )
+        .sort((a, b) => a.date.localeCompare(b.date));
+      completedRides = passengerRides
+        .filter((ride) => ride.date < today && ride.status === "confirmed")
         .sort((a, b) => b.date.localeCompare(a.date));
+      openAmount = (rides ?? [])
+        .filter(
+          (participation) =>
+            participation.rides &&
+            participation.rides.date < today &&
+            participation.status === "confirmed" &&
+            !paidParticipationIds.has(participation.id),
+        )
+        .reduce(
+          (total, participation) => total + Number(participation.price),
+          0,
+        );
       paymentHistory = payments ?? [];
     }
   }
@@ -72,8 +155,8 @@ export default async function ConsultaPage({
           Consultar minhas caronas
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Digite o celular que você usou pra pedir carona pra ver seu saldo e
-          histórico.
+          Digite o celular usado no pedido para consultar suas caronas e seus
+          pagamentos.
         </p>
 
         <form
@@ -105,13 +188,13 @@ export default async function ConsultaPage({
           </p>
         ) : null}
 
-        {balance ? (
+        {fullName ? (
           <div className="mt-6 space-y-4">
             <div className="rounded-2xl border border-line bg-card p-5 shadow-sm">
               <h2 className="font-display text-base font-bold text-ink">
                 {fullName}
               </h2>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                 <div>
                   <CalendarCheck
                     size={16}
@@ -121,80 +204,59 @@ export default async function ConsultaPage({
                     Caronas realizadas
                   </p>
                   <p className="mt-1 text-lg font-semibold text-ink">
-                    {balance.ridesTaken}
+                    {completedRides.length}
                   </p>
                 </div>
                 <div>
-                  <Receipt size={16} className="mx-auto text-go" />
-                  <p className="mt-1 text-xs text-ink-soft">Pago</p>
+                  <CalendarClock size={16} className="mx-auto text-accent" />
+                  <p className="mt-1 text-xs text-ink-soft">Caronas futuras</p>
                   <p className="mt-1 text-lg font-semibold text-ink">
-                    {formatBRL(balance.totalPaid)}
+                    {futureRides.length}
                   </p>
                 </div>
                 <div>
                   <Wallet
                     size={16}
-                    className={`mx-auto ${balance.openAmount > 0 ? "text-warn" : "text-go"}`}
+                    className={`mx-auto ${openAmount > 0 ? "text-warn" : "text-go"}`}
                   />
                   <p className="mt-1 text-xs text-ink-soft">Em aberto</p>
                   <p
-                    className={`mt-1 text-lg font-semibold ${
-                      balance.openAmount > 0 ? "text-warn" : "text-go"
+                    className={`mt-1 font-mono text-base font-semibold sm:text-lg ${
+                      openAmount > 0 ? "text-warn" : "text-go-dark"
                     }`}
                   >
-                    {formatBRL(balance.openAmount)}
-                  </p>
-                </div>
-                <div>
-                  <CalendarCheck size={16} className="mx-auto text-route" />
-                  <p className="mt-1 text-xs text-ink-soft">Projetado</p>
-                  <p className="mt-1 text-lg font-semibold text-route">
-                    {formatBRL(balance.projectedAmount)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-ink-faint">
-                    +{balance.futureRides} futuras
+                    {formatBRL(openAmount)}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-line bg-card p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-ink">
-                  Histórico de caronas
-                </h3>
-                <ul className="mt-2 space-y-1 text-sm text-ink-soft">
-                  {rideHistory.map((r, i) => (
-                    <li key={i} className="flex justify-between">
-                      <span>
-                        {r.date} {r.status !== "confirmed" ? `(${r.status})` : ""}
-                      </span>
-                      <span className="font-mono">{formatBRL(r.price)}</span>
-                    </li>
-                  ))}
-                  {rideHistory.length === 0 ? (
-                    <li className="text-ink-faint">Nenhuma carona ainda.</li>
-                  ) : null}
-                </ul>
-              </div>
-              <div className="rounded-2xl border border-line bg-card p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-ink">
-                  Pagamentos registrados
-                </h3>
-                <ul className="mt-2 space-y-1 text-sm text-ink-soft">
-                  {paymentHistory.map((p) => (
-                    <li key={p.id} className="flex justify-between">
-                      <span>
-                        {p.paid_at} {p.note ? `· ${p.note}` : ""}
-                      </span>
-                      <span className="font-mono">{formatBRL(p.amount)}</span>
-                    </li>
-                  ))}
-                  {paymentHistory.length === 0 ? (
-                    <li className="text-ink-faint">Nenhum pagamento ainda.</li>
-                  ) : null}
-                </ul>
-              </div>
+              <FutureRideGroups rides={futureRides} />
+              <CompletedRideGroups rides={completedRides} />
+            </div>
+
+            <div className="rounded-2xl border border-line bg-card p-5 shadow-sm">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Receipt size={15} className="text-go" />
+                Pagamentos realizados
+              </h3>
+              <ul className="mt-3 divide-y divide-line/70 text-sm text-ink-soft">
+                {paymentHistory.map((payment) => (
+                  <li key={payment.id} className="flex flex-wrap justify-between gap-2 py-2.5">
+                    <span>
+                      {formatDate(payment.paid_at)}
+                      {payment.note ? ` · ${payment.note}` : ""}
+                    </span>
+                    <span className="font-mono font-semibold text-go-dark">
+                      {formatBRL(payment.amount)}
+                    </span>
+                  </li>
+                ))}
+                {paymentHistory.length === 0 ? (
+                  <li className="py-2 text-ink-faint">Nenhum pagamento realizado.</li>
+                ) : null}
+              </ul>
             </div>
           </div>
         ) : null}
@@ -209,4 +271,219 @@ export default async function ConsultaPage({
       </div>
     </div>
   );
+}
+
+function CompletedRideGroups({ rides }: { rides: PassengerRide[] }) {
+  const groups = groupRides(rides, "desc");
+
+  return (
+    <section className="rounded-2xl border border-line bg-card p-5 shadow-sm">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <CalendarCheck size={15} className="text-route" />
+        Caronas realizadas
+      </h3>
+      <div className="mt-3 space-y-3">
+        {groups.map((group) => {
+          const paidCount = group.rides.filter((ride) => ride.isPaid).length;
+          const openCount = group.rides.length - paidCount;
+          const firstRide = group.rides[group.rides.length - 1];
+          const lastRide = group.rides[0];
+
+          return (
+            <details key={group.key} className="overflow-hidden rounded-xl border border-line/80 bg-white/45">
+              <summary className="cursor-pointer list-none p-3 marker:hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold capitalize text-ink">
+                      Toda {group.weekday} · {group.time?.slice(0, 5) ?? "sem horário"}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-ink-soft">
+                      {group.origin}
+                      <ArrowRight size={11} className="mx-1 inline text-ink-faint" />
+                      {group.destination}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${group.rideType === "volta" ? "bg-accent-soft text-accent-dark" : "bg-route-soft text-route"}`}>
+                    {group.rideType}
+                  </span>
+                </div>
+                <p className="mt-3 text-[11px] text-ink-faint">
+                  {formatDate(firstRide.date)} até {formatDate(lastRide.date)} · {group.rides.length} {group.rides.length === 1 ? "carona" : "caronas"}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {paidCount > 0 ? (
+                    <span className="rounded-full bg-go-soft px-2 py-1 text-[10px] font-bold text-go-dark">
+                      {paidCount} {paidCount === 1 ? "paga" : "pagas"}
+                    </span>
+                  ) : null}
+                  {openCount > 0 ? (
+                    <span className="rounded-full bg-warn-soft px-2 py-1 text-[10px] font-bold text-warn">
+                      {openCount} em aberto
+                    </span>
+                  ) : null}
+                </div>
+              </summary>
+              <ul className="border-t border-line/70 bg-white/35 px-3 py-2">
+                {group.rides.map((ride) => (
+                  <li key={ride.participationId} className="flex items-center justify-between gap-3 border-b border-line/60 py-2 text-xs last:border-0">
+                    <span className="text-ink-soft">{formatDate(ride.date)}</span>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${ride.isPaid ? "bg-go-soft text-go-dark" : "bg-warn-soft text-warn"}`}>
+                      {ride.isPaid ? "Paga" : "Em aberto"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          );
+        })}
+        {groups.length === 0 ? (
+          <p className="py-2 text-sm text-ink-faint">Nenhuma carona.</p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function FutureRideGroups({ rides }: { rides: PassengerRide[] }) {
+  const groups = groupRides(rides, "asc");
+
+  return (
+    <section className="rounded-2xl border border-line bg-card p-5 shadow-sm">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <CalendarClock size={15} className="text-accent" />
+        Caronas futuras
+      </h3>
+      <div className="mt-3 space-y-3">
+        {groups.map((group) => {
+          const firstRide = group.rides[0];
+          const lastRide = group.rides[group.rides.length - 1];
+          const pendingCount = group.rides.filter(
+            (ride) => ride.status === "pending",
+          ).length;
+
+          return (
+            <details
+              key={group.key}
+              className="group overflow-hidden rounded-xl border border-line/80 bg-white/45"
+            >
+              <summary className="cursor-pointer list-none p-3 marker:hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold capitalize text-ink">
+                      Toda {group.weekday} · {group.time?.slice(0, 5) ?? "sem horário"}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-ink-soft">
+                      {group.origin}
+                      <ArrowRight size={11} className="mx-1 inline text-ink-faint" />
+                      {group.destination}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${group.rideType === "volta" ? "bg-accent-soft text-accent-dark" : "bg-route-soft text-route"}`}>
+                    {group.rideType}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-faint">
+                  <span>
+                    {formatDate(firstRide.date)} até {formatDate(lastRide.date)}
+                  </span>
+                  <strong className="text-ink-soft">
+                    {group.rides.length} {group.rides.length === 1 ? "carona" : "caronas"}
+                  </strong>
+                </div>
+                {pendingCount > 0 ? (
+                  <p className="mt-2 text-[11px] font-semibold text-warn">
+                    {pendingCount} aguardando aprovação
+                  </p>
+                ) : null}
+              </summary>
+              <ul className="border-t border-line/70 bg-white/35 px-3 py-2">
+                {group.rides.map((ride, index) => (
+                  <li
+                    key={`${ride.date}-${index}`}
+                    className="flex items-center justify-between gap-3 border-b border-line/60 py-2 text-xs last:border-0"
+                  >
+                    <span className="text-ink-soft">{formatDate(ride.date)}</span>
+                    <span
+                      className={
+                        ride.status === "pending"
+                          ? "font-semibold text-warn"
+                          : "font-semibold text-go-dark"
+                      }
+                    >
+                      {ride.status === "pending" ? "Aguardando" : "Confirmada"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          );
+        })}
+        {groups.length === 0 ? (
+          <p className="py-2 text-sm text-ink-faint">Nenhuma carona.</p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function groupRides(
+  rides: PassengerRide[],
+  order: "asc" | "desc",
+): RideGroup[] {
+  const groups = new Map<string, RideGroup>();
+
+  rides.forEach((ride) => {
+    const date = new Date(`${ride.date}T12:00:00`);
+    const weekdayIndex = date.getDay();
+    const weekday = new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+    }).format(date);
+    const key = ride.seriesId
+      ? `series:${ride.seriesId}`
+      : [
+          ride.rideType,
+          weekdayIndex,
+          ride.time ?? "",
+          ride.origin,
+          ride.destination,
+        ].join(":");
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.rides.push(ride);
+      return;
+    }
+
+    groups.set(key, {
+      key,
+      rideType: ride.rideType,
+      origin: ride.origin,
+      destination: ride.destination,
+      time: ride.time,
+      weekday,
+      rides: [ride],
+    });
+  });
+
+  const result = Array.from(groups.values());
+  result.forEach((group) =>
+    group.rides.sort((a, b) =>
+      order === "asc"
+        ? a.date.localeCompare(b.date)
+        : b.date.localeCompare(a.date),
+    ),
+  );
+  return result.sort((a, b) =>
+    order === "asc"
+      ? a.rides[0].date.localeCompare(b.rides[0].date)
+      : b.rides[0].date.localeCompare(a.rides[0].date),
+  );
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
 }
