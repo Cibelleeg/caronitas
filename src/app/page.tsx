@@ -37,7 +37,6 @@ export default async function PublicCalendarPage({
     date?: string;
     dia?: string;
     tipo?: string;
-    horario?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -61,23 +60,10 @@ export default async function PublicCalendarPage({
     .order("time_of_day", { ascending: true, nullsFirst: false })
     .returns<PublicRide[]>();
 
-  const availableTimes = Array.from(
-    new Set(
-      (rides ?? []).flatMap((ride) =>
-        ride.time_of_day ? [ride.time_of_day.slice(0, 5)] : [],
-      ),
-    ),
-  ).sort();
   const filteredRides = (rides ?? []).filter((ride) => {
     const weekday = new Date(`${ride.date}T12:00:00`).getDay();
     if (params.dia && weekday !== Number(params.dia)) return false;
     if (params.tipo && ride.ride_type !== params.tipo) return false;
-    if (
-      params.horario &&
-      ride.time_of_day?.slice(0, 5) !== params.horario
-    ) {
-      return false;
-    }
     return true;
   });
   const ridesByDate = new Map<string, PublicRide[]>();
@@ -87,7 +73,7 @@ export default async function PublicCalendarPage({
     ridesByDate.set(ride.date, list);
   });
 
-  const hasActiveFilters = Boolean(params.dia || params.tipo || params.horario);
+  const hasActiveFilters = Boolean(params.dia || params.tipo);
   if (hasActiveFilters && !ridesByDate.has(selectedDateKey)) {
     const firstMatchingRide = filteredRides.find((ride) => ride.date >= today);
     selectedDateKey = firstMatchingRide?.date ?? filteredRides[0]?.date ?? selectedDateKey;
@@ -132,7 +118,6 @@ export default async function PublicCalendarPage({
     const query = new URLSearchParams({ month: monthKeyForLinks, date });
     if (params.dia) query.set("dia", params.dia);
     if (params.tipo) query.set("tipo", params.tipo);
-    if (params.horario) query.set("horario", params.horario);
     return `/?${query.toString()}`;
   };
 
@@ -184,7 +169,7 @@ export default async function PublicCalendarPage({
               </Link>
             ) : null}
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <select
               name="dia"
               defaultValue={params.dia ?? ""}
@@ -210,19 +195,6 @@ export default async function PublicCalendarPage({
               <option value="ida">Somente ida</option>
               <option value="volta">Somente volta</option>
             </select>
-            <select
-              name="horario"
-              defaultValue={params.horario ?? ""}
-              aria-label="Horário da carona"
-              className="rounded-xl border border-white/90 bg-white/70 px-3 py-2 text-xs text-ink outline-none focus:border-route"
-            >
-              <option value="">Todos os horários</option>
-              {availableTimes.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
             <button className="col-span-2 rounded-xl bg-gradient-to-r from-route to-pop px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-route/15 sm:col-span-1">
               Filtrar
             </button>
@@ -237,7 +209,6 @@ export default async function PublicCalendarPage({
             queryParams={{
               dia: params.dia,
               tipo: params.tipo,
-              horario: params.horario,
             }}
             renderDay={(day, key, inMonth) => {
               const dayRides = ridesByDate.get(key) ?? [];
