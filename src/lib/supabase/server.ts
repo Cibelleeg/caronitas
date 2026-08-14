@@ -19,8 +19,6 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // Called from a Server Component without a mutable cookie jar.
-            // Safe to ignore because middleware refreshes the session.
           }
         },
       },

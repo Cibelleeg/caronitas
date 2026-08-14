@@ -1,8 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
+  --background: #f6f7fb;
   --foreground: #171717;
+
+  --paper: #fafaf9;
+  --card: #ffffff;
+  --line: #e3e7ef;
+  --ink: #1c1917;
+  --ink-soft: #6b7280;
+  --ink-faint: #9ca3af;
+
+  --route: #2563eb;
+  --route-soft: #eff6ff;
+  --route-dark: #1d4ed8;
+
+  --accent: #f97316;
+  --accent-soft: #fff7ed;
+  --accent-dark: #ea580c;
+
+  --pop: #a855f7;
+  --pop-soft: #faf5ff;
+
+  --go: #16a34a;
+  --go-soft: #f0fdf4;
+  --go-dark: #15803d;
+
+  --warn: #d97706;
+  --warn-soft: #fffbeb;
+
+  --stop: #dc2626;
+  --stop-soft: #fef2f2;
 }
 
 @theme inline {
@@ -10,10 +38,104 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-geist-sans);
+
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-route: var(--route);
+  --color-route-soft: var(--route-soft);
+  --color-route-dark: var(--route-dark);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-dark: var(--accent-dark);
+
+  --color-pop: var(--pop);
+  --color-pop-soft: var(--pop-soft);
+
+  --color-go: var(--go);
+  --color-go-soft: var(--go-soft);
+  --color-go-dark: var(--go-dark);
+
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+
+  --color-stop: var(--stop);
+  --color-stop-soft: var(--stop-soft);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(37 99 235 / 0.06), transparent 28rem),
+    radial-gradient(circle at 95% 12%, rgb(249 115 22 / 0.05), transparent 24rem),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, Arial, sans-serif;
+}
+
+button,
+a,
+input,
+select {
+  transition-duration: 160ms;
+  transition-property: color, background-color, border-color, box-shadow, opacity,
+    transform;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+input,
+select {
+  min-height: 2.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+::selection {
+  background: var(--route-soft);
+  color: var(--route-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--route);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
 }

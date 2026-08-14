@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 
-const PUBLIC_PATHS = ["/login"];
+const PROTECTED_PATHS = ["/admin"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -32,11 +32,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicPath = PUBLIC_PATHS.some((path) =>
+  const isProtectedPath = PROTECTED_PATHS.some((path) =>
     request.nextUrl.pathname.startsWith(path),
   );
 
-  if (!user && !isPublicPath) {
+  if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/admin/calendario";
     return NextResponse.redirect(url);
   }
 

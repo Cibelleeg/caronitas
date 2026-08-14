@@ -1,14 +1,12 @@
 # Caronitas
 
-Site para controlar as caronas do semestre: calendário com as vagas do carro,
-quem vai em cada carona (passageiros fixos e avulsos) e o financeiro de cada
-passageiro (quanto deve, quanto já pagou).
+Portal para publicar e administrar caronas recorrentes ou avulsas, passageiros
+e pagamentos do semestre.
 
-- **Motorista**: gerencia calendário, passageiros, padrões fixos semanais e
-  pagamentos em `/admin`.
-- **Passageiros**: têm login próprio, veem suas caronas em
-  `/minhas-caronas`, confirmam/cancelam presença e acompanham o saldo em
-  `/minhas-caronas/financeiro`.
+- **Motorista**: gerencia caronas, passageiros e financeiro em `/admin`.
+- **Passageiros**: consultam as caronas na página inicial, veem trajeto,
+  horário, vagas e nomes confirmados, e solicitam uma vaga usando nome e
+  celular, sem criar uma conta.
 
 Stack: Next.js (App Router) + Tailwind CSS + Supabase (Postgres, Auth, Row
 Level Security).
@@ -26,13 +24,21 @@ Level Security).
 
 ## 2. Rodar as migrations
 
-No painel do Supabase, abra **SQL Editor**, cole o conteúdo de
-[`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) e
-execute. Isso cria as tabelas, as policies de RLS e o gatilho que cria um
-perfil automaticamente para cada novo usuário (papel padrão: `passenger`).
+No painel do Supabase, abra **SQL Editor** e execute, nessa ordem, o
+conteúdo de todos os arquivos em `supabase/migrations/`, na ordem numérica.
+Isso cria as tabelas, funções e políticas de acesso.
 
-(Se preferir usar a Supabase CLI: `supabase link` seguido de
-`supabase db push`.)
+Alternativa via terminal, com a connection string do banco (**Project
+Settings → Database → Connection string**):
+
+```bash
+for migration in supabase/migrations/*.sql; do
+  psql "postgresql://postgres:SENHA@db.<ref>.supabase.co:5432/postgres" \
+    -v ON_ERROR_STOP=1 -f "$migration"
+done
+```
+
+(Se preferir a Supabase CLI: `supabase link` seguido de `supabase db push`.)
 
 ## 3. Instalar e rodar localmente
 
@@ -58,19 +64,16 @@ Abra [http://localhost:3000](http://localhost:3000).
 
 3. Faça login em `/login` com esse e-mail/senha — você cairá em `/admin`.
 
-## 5. Configurar e convidar passageiros
+## 5. Usar o painel
 
-1. Em `/admin/config`, defina quantas vagas o carro tem, o preço padrão da
-   carona e (opcionalmente) o início/fim do semestre.
-2. Em `/admin/passageiros`, convide cada passageiro (nome + e-mail) — isso
-   envia um e-mail de convite do Supabase Auth para eles definirem senha.
-   Depois, cadastre o padrão fixo semanal de cada um (dia da semana, preço,
-   período de vigência).
-3. Volte em `/admin/config` e clique em "Gerar caronas do período" para
-   expandir os padrões fixos em caronas concretas no calendário. Pode rodar
-   de novo quando adicionar um novo padrão — não duplica o que já existe.
-4. Ajustes pontuais (feriado, falta, passageiro avulso) são feitos
-   diretamente no dia, em `/admin/calendario`.
+1. Em `/admin/config`, defina período do semestre, vagas e preço padrão.
+2. Em `/admin/calendario`, escolha um dia e publique a carona informando
+   origem, destino, tipo, horário, vagas e preço. A publicação pode se repetir
+   semanalmente até o fim do semestre.
+3. Em `/admin/passageiros`, cadastre pessoas, aplique caronas fixas em lote,
+   filtre a lista e confirme os pagamentos pendentes.
+4. Em `/admin/financeiro`, acompanhe faturado, valores em aberto, projeção e
+   os gráficos do semestre.
 
 ## Deploy
 
@@ -80,10 +83,9 @@ ambiente configuradas no projeto da Vercel.
 
 ## Estrutura
 
-- `supabase/migrations/0001_init.sql` — schema completo (tabelas + RLS).
+- `supabase/migrations/` — schema completo (tabelas + RLS), em ordem.
 - `src/lib/supabase/` — clientes Supabase (browser, server components,
   middleware, admin/service-role).
-- `src/lib/balances.ts` — cálculo do saldo de cada passageiro (caronas
-  confirmadas − pagamentos).
+- `src/lib/balances.ts` — consolidação financeira por passageiro.
 - `src/app/admin/` — área da motorista.
-- `src/app/minhas-caronas/` — área do passageiro.
+- `src/app/consulta/` — consulta pública do passageiro por celular.
