@@ -17,5 +17,5 @@ export async function signIn(_prevState: string | null, formData: FormData) {
     return "E-mail ou senha inválidos.";
   }
 
-  redirect("/admin/calendario");
+  redirect("/admin/caronas");
 }

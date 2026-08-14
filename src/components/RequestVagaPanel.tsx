@@ -199,7 +199,7 @@ function RideRequestForm({
                     Quero essa carona toda semana
                   </span>
                   <span className="mt-1 block text-[10px] leading-4 text-ink-soft">
-                    Solicita este mesmo dia e horário nas próximas semanas até o fim do semestre.
+                    Deixe desmarcado para pedir apenas esta data. Marque para solicitar este dia e horário até o fim do semestre.
                   </span>
                 </span>
               </label>
@@ -254,10 +254,12 @@ function Field({
 
 export default function RequestVagaPanel({
   dateKey,
+  title,
   rides,
   action,
 }: {
   dateKey: string;
+  title?: string;
   rides: RideSlot[];
   action: RequestVagaAction;
 }) {
@@ -276,7 +278,7 @@ export default function RequestVagaPanel({
   return (
     <section>
       <div className="mb-5 text-center">
-        <h1 className="font-display text-xl font-bold capitalize text-ink">{label}</h1>
+        <h2 className="font-display text-xl font-bold capitalize text-ink">{title ?? label}</h2>
         <p className="mt-1 text-xs text-ink-soft">
           {rides.length > 0
             ? `${rides.length} ${rides.length === 1 ? "horário disponível" : "horários disponíveis"}`

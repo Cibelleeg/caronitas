@@ -24,7 +24,7 @@ export default async function AdminLayout({
       <header className="relative z-20 border-b border-white/80 bg-white/65 shadow-[0_8px_32px_rgb(31_41_90/0.09)] backdrop-blur-xl md:sticky md:top-4 md:ml-4 md:mt-4 md:flex md:h-[calc(100vh-2rem)] md:flex-col md:overflow-hidden md:rounded-[1.75rem] md:border">
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:flex-1 md:flex-col md:items-stretch md:justify-start md:px-5 md:py-6">
           <div className="flex items-center gap-6 md:block">
-            <Logo href="/admin/calendario" size="sm" />
+            <Logo href="/admin/caronas" size="sm" />
             <div className="hidden md:mt-10 md:block">
               <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-ink-faint">
                 Painel da motorista

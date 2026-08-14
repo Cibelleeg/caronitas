@@ -208,7 +208,7 @@ export default async function SolicitacoesPage() {
           <p className="mt-1 max-w-sm text-sm text-ink-soft">
             Não há solicitações aguardando sua decisão neste momento.
           </p>
-          <Link href="/admin/calendario" className="mt-5 text-sm font-bold text-route hover:text-route-dark">
+          <Link href="/admin/caronas" className="mt-5 text-sm font-bold text-route hover:text-route-dark">
             Voltar para as caronas
           </Link>
         </section>

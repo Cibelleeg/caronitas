@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/admin/calendario", label: "Caronas", icon: CalendarDays },
+  { href: "/admin/caronas", label: "Caronas", icon: CalendarDays },
   { href: "/admin/solicitacoes", label: "Solicitações", icon: Hand },
   { href: "/admin/passageiros", label: "Passageiros", icon: Users },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
@@ -27,7 +27,9 @@ export default function AdminNav() {
       className="flex gap-1 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0"
     >
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname.startsWith(item.href);
+        const isActive =
+          pathname.startsWith(item.href) ||
+          (item.href === "/admin/caronas" && pathname.startsWith("/admin/calendario"));
         const Icon = item.icon;
         return (
           <Link

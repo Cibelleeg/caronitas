@@ -140,6 +140,7 @@ export async function requestSeatPublic(
 
   revalidatePath("/");
   revalidatePath("/admin/calendario");
+  revalidatePath("/admin/caronas");
   revalidatePath("/admin/solicitacoes");
 
   return {

@@ -238,6 +238,7 @@ export async function updateParticipationStatus(formData: FormData) {
 
     if (error) throw new Error(error.message);
     revalidatePath("/admin/calendario");
+    revalidatePath("/admin/caronas");
     revalidatePath("/admin/solicitacoes");
     revalidatePath("/admin/passageiros");
     revalidatePath("/consulta");
@@ -253,6 +254,7 @@ export async function updateParticipationStatus(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/calendario");
+  revalidatePath("/admin/caronas");
   revalidatePath("/admin/solicitacoes");
   revalidatePath("/consulta");
 }
