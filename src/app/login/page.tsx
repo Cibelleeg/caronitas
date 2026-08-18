@@ -30,7 +30,7 @@ export default function LoginPage() {
             <div className="mt-20 max-w-md">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
                 <ShieldCheck size={14} />
-                Área exclusiva da motorista (aka eu, kimiersson)
+                Área exclusiva da motorista (aka eu, Cibs)
               </span>
               <h1 className="mt-6 font-display text-4xl font-bold leading-tight tracking-[-0.04em]">
                 Sim, uma planilha resolveria, mas isso aqui é mais divertido
